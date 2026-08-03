@@ -19,6 +19,9 @@ const stubServices: ServiceContainer = {
       limits: null
     }),
     assertWithinQuota: async () => {}
+  },
+  columnMappingService: {
+    suggestMapping: async () => ({ mapping: {}, usage: { actions: 0, inputTokens: 0, outputTokens: 0 }, keySource: "platform" })
   }
 };
 

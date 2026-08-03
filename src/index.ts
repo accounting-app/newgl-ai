@@ -8,10 +8,12 @@ import {
   INTERNAL_SERVICE_TOKEN
 } from "@/configuration";
 import { createApp } from "@/http/app";
+import { createAnthropicClient } from "@/infra/anthropic/client";
 import { createAnthropicKeyValidator } from "@/infra/anthropic/key-validator";
 import { getSql } from "@/infra/postgres/client";
 import { createPostgresCredentialsRepository } from "@/infra/postgres/credentials-repository";
 import { createPostgresUsageRepository } from "@/infra/postgres/usage-repository";
+import { createFakeAnthropicClient } from "@/testing/fake-anthropic-client";
 import { createFakeKeyValidator } from "@/testing/fake-key-validator";
 
 if (!AI_KEY_ENCRYPTION_KEY) {
@@ -28,21 +30,21 @@ if (!ANTHROPIC_API_KEY) {
   );
 }
 
-// Test-only escape hatch, mirroring newgl-api's own TEST_MODE pattern: lets
-// newgl-api's cross-service integration tests spawn a real newgl-ai process
-// without ever calling the real Anthropic API. Never set this outside tests.
-const useFakeKeyValidation = process.env.AI_FAKE_KEY_VALIDATION === "true";
-if (useFakeKeyValidation) {
-  console.warn("[newgl-ai] AI_FAKE_KEY_VALIDATION=true -- using the fake key validator. Test use only.");
+// Test-only escape hatch: lets this service's own tests and newgl-api's
+// cross-service integration tests (which spawn a real newgl-ai process)
+// exercise key validation and AI calls without ever touching the real
+// Anthropic API or needing a real account. Never set this outside tests.
+const testMode = process.env.AI_TEST_MODE === "true";
+if (testMode) {
+  console.warn("[newgl-ai] AI_TEST_MODE=true -- using fake Anthropic key validation and responses. Test use only.");
 }
 
 const sql = getSql();
 const services = createServiceContainer({
   credentialsRepository: createPostgresCredentialsRepository(sql),
   usageRepository: createPostgresUsageRepository(sql),
-  keyValidator: useFakeKeyValidation
-    ? createFakeKeyValidator(ANTHROPIC_MODEL)
-    : createAnthropicKeyValidator(ANTHROPIC_MODEL),
+  keyValidator: testMode ? createFakeKeyValidator(ANTHROPIC_MODEL) : createAnthropicKeyValidator(ANTHROPIC_MODEL),
+  anthropicClient: testMode ? createFakeAnthropicClient() : createAnthropicClient(),
   encryptionKey: AI_KEY_ENCRYPTION_KEY,
   platformApiKey: ANTHROPIC_API_KEY,
   platformModel: ANTHROPIC_MODEL

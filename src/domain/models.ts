@@ -49,6 +49,36 @@ export type UsagePeriodSummary = {
   byKeySource: Record<KeySource, { actions: number; tokens: number }>;
 };
 
+// Mirrors newgl-api's importTransactionRowInputSchema minus clientRowId
+// (generated client-side) and categoryAccountId (that's categorization,
+// Phase 6 -- a CSV header never maps to it). See AI_INTEGRATION_PLAN.md
+// Part 7, feature #1.
+export const COLUMN_MAPPING_TARGET_FIELDS = ["transactionDate", "payee", "memo", "amount", "referenceNumber"] as const;
+export type ColumnMappingTargetField = (typeof COLUMN_MAPPING_TARGET_FIELDS)[number];
+
+// null means "no confident match" -- never guess a wrong column, per Part 7
+// ("the AI suggests; a human confirms").
+export type ColumnMapping = Partial<Record<ColumnMappingTargetField, number | null>>;
+
+export type ColumnMappingUsage = { inputTokens: number; outputTokens: number };
+
+// Raw, unvalidated shape as returned by the AnthropicClient port -- may
+// contain any string keys or out-of-range indices. The service layer
+// validates this down to a ColumnMapping before it's trusted anywhere else.
+export type ColumnMappingResult = {
+  mapping: Record<string, number | null>;
+  usage: ColumnMappingUsage;
+};
+
+export const columnMappingInputSchema = z.object({
+  tenantId: z.string().uuid(),
+  csvHeader: z.array(z.string()).min(1).max(100),
+  // Capped at 3 -- "header + 3 sample rows" per Part 1b's endpoint contract.
+  sampleRows: z.array(z.array(z.string())).min(1).max(3),
+  monthlyAiActions: z.number().int().positive().optional(),
+  monthlyTokenCap: z.number().int().positive().optional()
+});
+
 export const setCredentialInputSchema = z.object({
   tenantId: z.string().uuid(),
   apiKey: z.string().min(20, "apiKey looks too short to be a real Anthropic key"),

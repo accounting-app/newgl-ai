@@ -1,5 +1,14 @@
 import type { EncryptedPayload } from "@/shared/crypto";
-import type { AiStatus, MaskedCredential, PlanLimits, ResolvedAiKey, UsageEntry, UsagePeriodSummary } from "@/domain/models";
+import type {
+  AiStatus,
+  ColumnMappingResult,
+  KeySource,
+  MaskedCredential,
+  PlanLimits,
+  ResolvedAiKey,
+  UsageEntry,
+  UsagePeriodSummary
+} from "@/domain/models";
 
 export type CredentialRow = EncryptedPayload & {
   lastFour: string;
@@ -43,4 +52,32 @@ export interface UsageService {
   recordUsage(entry: UsageEntry): Promise<void>;
   getUsageSummary(tenantId: string, limits?: PlanLimits): Promise<{ summary: UsagePeriodSummary; limits: PlanLimits | null }>;
   assertWithinQuota(tenantId: string, limits: PlanLimits): Promise<void>;
+}
+
+/**
+ * Talks to Anthropic for the one feature that exists so far (Part 7, #1:
+ * CSV column auto-mapping). Real implementation calls the Messages API;
+ * tests use a deterministic fake so no test needs a real Anthropic account.
+ */
+export interface AnthropicClient {
+  suggestColumnMapping(input: {
+    apiKey: string;
+    model: string;
+    targetFields: readonly string[];
+    csvHeader: string[];
+    sampleRows: string[][];
+  }): Promise<ColumnMappingResult>;
+}
+
+export interface ColumnMappingService {
+  suggestMapping(params: {
+    tenantId: string;
+    csvHeader: string[];
+    sampleRows: string[][];
+    limits?: PlanLimits;
+  }): Promise<{
+    mapping: import("@/domain/models").ColumnMapping;
+    usage: { actions: number; inputTokens: number; outputTokens: number };
+    keySource: KeySource;
+  }>;
 }
