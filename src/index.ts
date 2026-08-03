@@ -12,6 +12,7 @@ import { createAnthropicClient } from "@/infra/anthropic/client";
 import { createAnthropicKeyValidator } from "@/infra/anthropic/key-validator";
 import { getSql } from "@/infra/postgres/client";
 import { createPostgresCredentialsRepository } from "@/infra/postgres/credentials-repository";
+import { createPostgresPayeeRulesRepository } from "@/infra/postgres/payee-rules-repository";
 import { createPostgresUsageRepository } from "@/infra/postgres/usage-repository";
 import { createFakeAnthropicClient } from "@/testing/fake-anthropic-client";
 import { createFakeKeyValidator } from "@/testing/fake-key-validator";
@@ -43,6 +44,7 @@ const sql = getSql();
 const services = createServiceContainer({
   credentialsRepository: createPostgresCredentialsRepository(sql),
   usageRepository: createPostgresUsageRepository(sql),
+  payeeRulesRepository: createPostgresPayeeRulesRepository(sql),
   keyValidator: testMode ? createFakeKeyValidator(ANTHROPIC_MODEL) : createAnthropicKeyValidator(ANTHROPIC_MODEL),
   anthropicClient: testMode ? createFakeAnthropicClient() : createAnthropicClient(),
   encryptionKey: AI_KEY_ENCRYPTION_KEY,

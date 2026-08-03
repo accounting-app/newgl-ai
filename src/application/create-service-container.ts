@@ -1,13 +1,21 @@
-import type { AnthropicClient, AnthropicKeyValidator, CredentialsRepository, UsageRepository } from "@/application/contracts";
+import type {
+  AnthropicClient,
+  AnthropicKeyValidator,
+  CredentialsRepository,
+  PayeeRulesRepository,
+  UsageRepository
+} from "@/application/contracts";
 import type { ServiceContainer } from "@/application/service-container";
 import { ColumnMappingServiceImpl } from "@/application/services/column-mapping-service";
 import { CredentialsServiceImpl } from "@/application/services/credentials-service";
+import { PayeeRulesServiceImpl } from "@/application/services/payee-rules-service";
 import { UsageServiceImpl } from "@/application/services/usage-service";
 import { COLUMN_MAPPING_TARGET_FIELDS } from "@/domain/models";
 
 export function createServiceContainer(deps: {
   credentialsRepository: CredentialsRepository;
   usageRepository: UsageRepository;
+  payeeRulesRepository: PayeeRulesRepository;
   keyValidator: AnthropicKeyValidator;
   anthropicClient: AnthropicClient;
   encryptionKey: string;
@@ -31,6 +39,7 @@ export function createServiceContainer(deps: {
       usageService,
       deps.anthropicClient,
       COLUMN_MAPPING_TARGET_FIELDS
-    )
+    ),
+    payeeRulesService: new PayeeRulesServiceImpl(credentialsService, usageService, deps.anthropicClient, deps.payeeRulesRepository)
   };
 }

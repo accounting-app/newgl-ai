@@ -1,5 +1,5 @@
 import type { AnthropicClient } from "@/application/contracts";
-import type { ColumnMappingResult } from "@/domain/models";
+import type { ColumnMappingResult, PayeeNormalizationClientResult } from "@/domain/models";
 
 const FIELD_KEYWORDS: Record<string, string[]> = {
   transactionDate: ["date"],
@@ -15,6 +15,27 @@ const FIELD_KEYWORDS: Record<string, string[]> = {
  * of its keywords. Wired in only when AI_TEST_MODE=true (see src/index.ts),
  * so tests and local demos never call the real Anthropic API.
  */
+/**
+ * Deterministic stand-in for a payee cleanup call: strips the same kind of
+ * processor noise `normalizePayeeKey` matches on, then title-cases what's
+ * left. Doesn't need to match the real model's exact wording -- tests only
+ * assert on the shape of the response and that it survives a batch call.
+ */
+function fakeCanonicalize(payee: string): string {
+  const cleaned = payee
+    .replace(/^(sq|sp|tst|pp)\s*\*/i, "")
+    .replace(/#\s*\d+/g, "")
+    .replace(/\b\d{4,}\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (cleaned.length === 0) return payee;
+  return cleaned
+    .toLowerCase()
+    .split(" ")
+    .map((word) => (word.length > 0 ? word[0]!.toUpperCase() + word.slice(1) : word))
+    .join(" ");
+}
+
 export function createFakeAnthropicClient(): AnthropicClient {
   return {
     async suggestColumnMapping({ targetFields, csvHeader }): Promise<ColumnMappingResult> {
@@ -28,6 +49,13 @@ export function createFakeAnthropicClient(): AnthropicClient {
       }
 
       return { mapping, usage: { inputTokens: 120, outputTokens: 24 } };
+    },
+
+    async normalizePayees({ payees }): Promise<PayeeNormalizationClientResult> {
+      return {
+        results: payees.map((payee) => ({ payee, canonicalPayee: fakeCanonicalize(payee) })),
+        usage: { inputTokens: 40 + payees.length * 10, outputTokens: 10 + payees.length * 5 }
+      };
     }
   };
 }

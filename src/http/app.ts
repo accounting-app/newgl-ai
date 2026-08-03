@@ -6,6 +6,7 @@ import { internalAuth } from "@/http/middleware/internal-auth";
 import { columnMappingRoutes } from "@/http/routes/column-mapping";
 import { credentialsRoutes } from "@/http/routes/credentials";
 import { healthRoutes } from "@/http/routes/health";
+import { payeeRulesRoutes } from "@/http/routes/payee-rules";
 import { usageRoutes } from "@/http/routes/usage";
 
 /**
@@ -23,6 +24,7 @@ export function createApp(services: ServiceContainer, internalServiceToken: stri
   credentialsRoutes(app, services);
   usageRoutes(app, services);
   columnMappingRoutes(app, services);
+  payeeRulesRoutes(app, services);
 
   return app;
 }

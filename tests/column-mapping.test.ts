@@ -10,6 +10,7 @@ import { COLUMN_MAPPING_TARGET_FIELDS } from "../src/domain/models";
 import { createApp } from "../src/http/app";
 import { getSql } from "../src/infra/postgres/client";
 import { createPostgresCredentialsRepository } from "../src/infra/postgres/credentials-repository";
+import { createPostgresPayeeRulesRepository } from "../src/infra/postgres/payee-rules-repository";
 import { createPostgresUsageRepository } from "../src/infra/postgres/usage-repository";
 import { createFakeAnthropicClient } from "../src/testing/fake-anthropic-client";
 import { createFakeKeyValidator } from "./helpers/fake-key-validator";
@@ -39,6 +40,7 @@ describe("column mapping service + /internal/ai/column-mapping", () => {
     services = createServiceContainer({
       credentialsRepository: createPostgresCredentialsRepository(sql),
       usageRepository: createPostgresUsageRepository(sql),
+      payeeRulesRepository: createPostgresPayeeRulesRepository(sql),
       keyValidator: createFakeKeyValidator(),
       anthropicClient: createFakeAnthropicClient(),
       encryptionKey: "Eo0pUoxiqHb5h1QlSUcD07lVfiqi3kOcovq2CaSmLew=",
@@ -152,7 +154,8 @@ describe("column mapping service + /internal/ai/column-mapping", () => {
           memo: null
         },
         usage: { inputTokens: 10, outputTokens: 5 }
-      })
+      }),
+      normalizePayees: async () => ({ results: [], usage: { inputTokens: 0, outputTokens: 0 } })
     };
     const credentialsService = new CredentialsServiceImpl(
       createPostgresCredentialsRepository(getSql()),

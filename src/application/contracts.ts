@@ -4,6 +4,10 @@ import type {
   ColumnMappingResult,
   KeySource,
   MaskedCredential,
+  NormalizedPayeeResult,
+  PayeeNormalizationClientResult,
+  PayeeRuleRow,
+  PayeeRuleSource,
   PlanLimits,
   ResolvedAiKey,
   UsageEntry,
@@ -67,6 +71,11 @@ export interface AnthropicClient {
     csvHeader: string[];
     sampleRows: string[][];
   }): Promise<ColumnMappingResult>;
+
+  /** Part 7, #2: turn raw processor strings into clean display names, e.g.
+   * "SQ *COFFEE #4432" -> "Coffee Shop". Only ever called with payees the
+   * `payee_rules` cascade couldn't already resolve. */
+  normalizePayees(input: { apiKey: string; model: string; payees: string[] }): Promise<PayeeNormalizationClientResult>;
 }
 
 export interface ColumnMappingService {
@@ -80,4 +89,47 @@ export interface ColumnMappingService {
     usage: { actions: number; inputTokens: number; outputTokens: number };
     keySource: KeySource;
   }>;
+}
+
+/** Only newgl-ai ever reads/writes this table -- see AI_INTEGRATION_PLAN.md Part 1. */
+export interface PayeeRulesRepository {
+  findByNormalizedKeys(tenantId: string, normalizedKeys: string[]): Promise<Map<string, PayeeRuleRow>>;
+  upsertMany(
+    tenantId: string,
+    rules: Array<{
+      normalizedPayee: string;
+      canonicalPayee: string;
+      // false for a plain accountId confirmation with no explicit canonical
+      // name (e.g. learnRules called with just `payee` + `accountId`) --
+      // an existing AI-learned canonical name is worth more than the raw
+      // payee string, so it's kept rather than clobbered.
+      overwriteCanonicalPayee: boolean;
+      accountId: string | null;
+      source: PayeeRuleSource;
+    }>
+  ): Promise<void>;
+}
+
+export interface PayeeRulesService {
+  /** The Phase 5 cascade (AI_INTEGRATION_PLAN.md Part 7): exact-match
+   * against learned rules first, batch whatever's left into one Anthropic
+   * call, learn the result for next time. `keySource` is null when every
+   * payee was rule-resolved -- no key was ever touched, no quota check ran. */
+  suggestNormalization(params: {
+    tenantId: string;
+    payees: string[];
+    limits?: PlanLimits;
+  }): Promise<{
+    results: NormalizedPayeeResult[];
+    usage: { actions: number; inputTokens: number; outputTokens: number };
+    keySource: KeySource | null;
+  }>;
+
+  /** Confirmed (payee -> accountId) pairs from a completed import -- Part
+   * 1b's `POST /internal/ai/rules/learn`. No Anthropic call, no usage/quota
+   * involvement; this only ever writes to `payee_rules`. */
+  learnRules(params: {
+    tenantId: string;
+    rules: Array<{ payee: string; accountId: string; canonicalPayee?: string }>;
+  }): Promise<{ learned: number }>;
 }

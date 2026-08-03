@@ -38,3 +38,38 @@ describe("createFakeAnthropicClient (heuristic mapping)", () => {
     expect(result.mapping.referenceNumber).toBeNull();
   });
 });
+
+describe("createFakeAnthropicClient (heuristic payee cleanup)", () => {
+  test("strips processor noise and title-cases the result", async () => {
+    const client = createFakeAnthropicClient();
+    const result = await client.normalizePayees({
+      apiKey: "unused",
+      model: "unused",
+      payees: ["SQ *COFFEE SHOP #4432", "UBER TRIP 8213409"]
+    });
+
+    expect(result.results).toEqual([
+      { payee: "SQ *COFFEE SHOP #4432", canonicalPayee: "Coffee Shop" },
+      { payee: "UBER TRIP 8213409", canonicalPayee: "Uber Trip" }
+    ]);
+    expect(result.usage.inputTokens).toBeGreaterThan(0);
+  });
+
+  test("returns the original string unchanged when nothing is left to clean", async () => {
+    const client = createFakeAnthropicClient();
+    const result = await client.normalizePayees({
+      apiKey: "unused",
+      model: "unused",
+      payees: ["12345678"]
+    });
+
+    expect(result.results).toEqual([{ payee: "12345678", canonicalPayee: "12345678" }]);
+  });
+
+  test("scales usage with the number of payees in the batch", async () => {
+    const client = createFakeAnthropicClient();
+    const one = await client.normalizePayees({ apiKey: "unused", model: "unused", payees: ["A"] });
+    const three = await client.normalizePayees({ apiKey: "unused", model: "unused", payees: ["A", "B", "C"] });
+    expect(three.usage.inputTokens).toBeGreaterThan(one.usage.inputTokens);
+  });
+});

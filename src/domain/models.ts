@@ -79,6 +79,64 @@ export const columnMappingInputSchema = z.object({
   monthlyTokenCap: z.number().int().positive().optional()
 });
 
+// Phase 5 (AI_INTEGRATION_PLAN.md Part 7, #2): payee normalization + learned
+// rules. `payee_rules` rows are keyed by a deterministic normalized string
+// (src/shared/payee-normalization.ts) so the cascade's exact-match step
+// never needs Anthropic once a payee has been seen once.
+export const PAYEE_RULE_SOURCES = ["ai", "user"] as const;
+export type PayeeRuleSource = (typeof PAYEE_RULE_SOURCES)[number];
+
+export type PayeeRuleRow = {
+  normalizedPayee: string;
+  canonicalPayee: string;
+  accountId: string | null;
+  source: PayeeRuleSource;
+  confirmedCount: number;
+};
+
+export type NormalizedPayeeResult = {
+  payee: string; // the original, un-normalized string as given by the caller
+  normalizedKey: string;
+  canonicalPayee: string;
+  accountId: string | null;
+  resolvedBy: "rule" | "ai";
+};
+
+export type PayeeNormalizationUsage = { inputTokens: number; outputTokens: number };
+
+// Raw, unvalidated shape as returned by the AnthropicClient port -- index-
+// aligned with the payees sent in the request. The service layer treats a
+// missing/malformed entry as "keep the raw payee", never a hard failure --
+// see AI_INTEGRATION_PLAN.md Part 7 on never trusting model output blindly.
+export type PayeeNormalizationClientResult = {
+  results: Array<{ payee: string; canonicalPayee: string }>;
+  usage: PayeeNormalizationUsage;
+};
+
+export const normalizePayeesInputSchema = z.object({
+  tenantId: z.string().uuid(),
+  payees: z.array(z.string().min(1)).min(1).max(200),
+  monthlyAiActions: z.number().int().positive().optional(),
+  monthlyTokenCap: z.number().int().positive().optional()
+});
+
+export const learnPayeeRulesInputSchema = z.object({
+  tenantId: z.string().uuid(),
+  // Confirmed (payee -> accountId) pairs -- Part 1b: "feeds the cascade".
+  // Only ever learned from what a user actually confirmed and imported,
+  // never from an unreviewed suggestion (Part 7).
+  rules: z
+    .array(
+      z.object({
+        payee: z.string().min(1),
+        accountId: z.string().min(1),
+        canonicalPayee: z.string().min(1).optional()
+      })
+    )
+    .min(1)
+    .max(500)
+});
+
 export const setCredentialInputSchema = z.object({
   tenantId: z.string().uuid(),
   apiKey: z.string().min(20, "apiKey looks too short to be a real Anthropic key"),

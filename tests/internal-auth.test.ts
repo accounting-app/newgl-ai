@@ -22,6 +22,10 @@ const stubServices: ServiceContainer = {
   },
   columnMappingService: {
     suggestMapping: async () => ({ mapping: {}, usage: { actions: 0, inputTokens: 0, outputTokens: 0 }, keySource: "platform" })
+  },
+  payeeRulesService: {
+    suggestNormalization: async () => ({ results: [], usage: { actions: 0, inputTokens: 0, outputTokens: 0 }, keySource: null }),
+    learnRules: async () => ({ learned: 0 })
   }
 };
 
