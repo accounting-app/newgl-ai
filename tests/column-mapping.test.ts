@@ -155,7 +155,8 @@ describe("column mapping service + /internal/ai/column-mapping", () => {
         },
         usage: { inputTokens: 10, outputTokens: 5 }
       }),
-      normalizePayees: async () => ({ results: [], usage: { inputTokens: 0, outputTokens: 0 } })
+      normalizePayees: async () => ({ results: [], usage: { inputTokens: 0, outputTokens: 0 } }),
+      categorizeTransactions: async () => ({ results: [], usage: { inputTokens: 0, outputTokens: 0 } })
     };
     const credentialsService = new CredentialsServiceImpl(
       createPostgresCredentialsRepository(getSql()),

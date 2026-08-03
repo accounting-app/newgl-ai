@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import type { ServiceContainer } from "@/application/service-container";
 import { errorHandler } from "@/http/error-handler";
 import { internalAuth } from "@/http/middleware/internal-auth";
+import { categorizationRoutes } from "@/http/routes/categorization";
 import { columnMappingRoutes } from "@/http/routes/column-mapping";
 import { credentialsRoutes } from "@/http/routes/credentials";
 import { healthRoutes } from "@/http/routes/health";
@@ -25,6 +26,7 @@ export function createApp(services: ServiceContainer, internalServiceToken: stri
   usageRoutes(app, services);
   columnMappingRoutes(app, services);
   payeeRulesRoutes(app, services);
+  categorizationRoutes(app, services);
 
   return app;
 }

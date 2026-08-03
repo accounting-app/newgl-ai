@@ -6,6 +6,7 @@ import type {
   UsageRepository
 } from "@/application/contracts";
 import type { ServiceContainer } from "@/application/service-container";
+import { CategorizationServiceImpl } from "@/application/services/categorization-service";
 import { ColumnMappingServiceImpl } from "@/application/services/column-mapping-service";
 import { CredentialsServiceImpl } from "@/application/services/credentials-service";
 import { PayeeRulesServiceImpl } from "@/application/services/payee-rules-service";
@@ -40,6 +41,12 @@ export function createServiceContainer(deps: {
       deps.anthropicClient,
       COLUMN_MAPPING_TARGET_FIELDS
     ),
-    payeeRulesService: new PayeeRulesServiceImpl(credentialsService, usageService, deps.anthropicClient, deps.payeeRulesRepository)
+    payeeRulesService: new PayeeRulesServiceImpl(credentialsService, usageService, deps.anthropicClient, deps.payeeRulesRepository),
+    categorizationService: new CategorizationServiceImpl(
+      credentialsService,
+      usageService,
+      deps.anthropicClient,
+      deps.payeeRulesRepository
+    )
   };
 }

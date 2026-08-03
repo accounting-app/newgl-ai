@@ -137,6 +137,63 @@ export const learnPayeeRulesInputSchema = z.object({
     .max(500)
 });
 
+// Phase 6 (AI_INTEGRATION_PLAN.md Part 7, #3): categorization -- suggests
+// the counterparty ("target") account for a transaction. The chart of
+// accounts is a finite label set, so this is classification into ~50-300
+// known labels, not open-ended generation -- the model returns an index
+// into the account array it was given, never a name (Part 7's prompt-
+// injection mitigation: an out-of-range index fails validation structurally,
+// a wrong free-text account name would not).
+export type CategorizationAccount = { id: string; name: string; category: string };
+export type CategorizationTransaction = { payee: string; memo?: string; amount: number };
+
+export type CategorizationSuggestion = {
+  payee: string;
+  memo: string | null;
+  amount: number;
+  accountId: string | null;
+  confidence: number | null;
+  resolvedBy: "rule" | "ai";
+};
+
+export type CategorizationUsage = { inputTokens: number; outputTokens: number };
+
+// Raw, unvalidated shape as returned by the AnthropicClient port. `index`
+// aligns to the position of the *unresolved* transaction within the batch
+// sent to Anthropic (not the caller's original transaction list -- the
+// service re-maps this). `accountIndex` is a position in the compressed
+// account catalog sent alongside it.
+export type CategorizationClientResult = {
+  results: Array<{ index: number; accountIndex: number | null; confidence: number | null }>;
+  usage: CategorizationUsage;
+};
+
+export const categorizeInputSchema = z.object({
+  tenantId: z.string().uuid(),
+  // Capped generously above typical chart-of-accounts sizes (Part 7: "~50-300
+  // known labels") -- newgl-api sends the tenant's whole chart, this is a
+  // sanity ceiling, not a design target.
+  accounts: z
+    .array(z.object({ id: z.string().min(1), name: z.string().min(1), category: z.string().min(1) }))
+    .min(1)
+    .max(1000),
+  // One Anthropic request per call handles one batch, not one row -- capped
+  // so a single request can't blow past the token cap (Part 8: "pre-flight
+  // large batches").
+  transactions: z
+    .array(
+      z.object({
+        payee: z.string().min(1),
+        memo: z.string().optional(),
+        amount: z.number()
+      })
+    )
+    .min(1)
+    .max(200),
+  monthlyAiActions: z.number().int().positive().optional(),
+  monthlyTokenCap: z.number().int().positive().optional()
+});
+
 export const setCredentialInputSchema = z.object({
   tenantId: z.string().uuid(),
   apiKey: z.string().min(20, "apiKey looks too short to be a real Anthropic key"),

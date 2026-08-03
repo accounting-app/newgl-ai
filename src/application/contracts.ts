@@ -1,6 +1,10 @@
 import type { EncryptedPayload } from "@/shared/crypto";
 import type {
   AiStatus,
+  CategorizationAccount,
+  CategorizationClientResult,
+  CategorizationSuggestion,
+  CategorizationTransaction,
   ColumnMappingResult,
   KeySource,
   MaskedCredential,
@@ -76,6 +80,18 @@ export interface AnthropicClient {
    * "SQ *COFFEE #4432" -> "Coffee Shop". Only ever called with payees the
    * `payee_rules` cascade couldn't already resolve. */
   normalizePayees(input: { apiKey: string; model: string; payees: string[] }): Promise<PayeeNormalizationClientResult>;
+
+  /** Part 7, #3: suggest the counterparty account for each transaction not
+   * already resolved by the payee_rules cascade. `accounts` is the
+   * compressed catalog (index + name + category only, no id) -- the model
+   * only ever sees a position to point at, never anything it could use to
+   * fabricate a wrong account name. */
+  categorizeTransactions(input: {
+    apiKey: string;
+    model: string;
+    accounts: Array<{ index: number; name: string; category: string }>;
+    transactions: Array<{ index: number; payee: string; memo?: string; amount: number }>;
+  }): Promise<CategorizationClientResult>;
 }
 
 export interface ColumnMappingService {
@@ -132,4 +148,23 @@ export interface PayeeRulesService {
     tenantId: string;
     rules: Array<{ payee: string; accountId: string; canonicalPayee?: string }>;
   }): Promise<{ learned: number }>;
+}
+
+export interface CategorizationService {
+  /** Part 7, #3's cascade: exact-match against `payee_rules` first (an
+   * account confirmed by this tenant before, at zero cost), batch whatever's
+   * left into one Anthropic call. Unlike column-mapping/payee-normalization,
+   * usage here is metered **per AI-resolved row**, not per batch (Part 5:
+   * "one transaction row categorized by Claude = 1 action") -- `keySource`
+   * is null only when every row was rule-resolved. */
+  suggestCategorization(params: {
+    tenantId: string;
+    accounts: CategorizationAccount[];
+    transactions: CategorizationTransaction[];
+    limits?: PlanLimits;
+  }): Promise<{
+    results: CategorizationSuggestion[];
+    usage: { actions: number; inputTokens: number; outputTokens: number };
+    keySource: KeySource | null;
+  }>;
 }

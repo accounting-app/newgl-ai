@@ -73,3 +73,51 @@ describe("createFakeAnthropicClient (heuristic payee cleanup)", () => {
     expect(three.usage.inputTokens).toBeGreaterThan(one.usage.inputTokens);
   });
 });
+
+describe("createFakeAnthropicClient (heuristic categorization)", () => {
+  const accounts = [
+    { index: 0, name: "Cash", category: "BANK" },
+    { index: 1, name: "Coffee", category: "EXPENSE" },
+    { index: 2, name: "Consulting Income", category: "INCOME" }
+  ];
+
+  test("matches a transaction to an account by payee keyword", async () => {
+    const client = createFakeAnthropicClient();
+    const result = await client.categorizeTransactions({
+      apiKey: "unused",
+      model: "unused",
+      accounts,
+      transactions: [{ index: 0, payee: "Coffee Shop", amount: -4.5 }]
+    });
+
+    expect(result.results).toEqual([{ index: 0, accountIndex: 1, confidence: 0.8 }]);
+  });
+
+  test("falls back to the amount-sign hint when no keyword matches", async () => {
+    const client = createFakeAnthropicClient();
+    const result = await client.categorizeTransactions({
+      apiKey: "unused",
+      model: "unused",
+      accounts,
+      transactions: [
+        { index: 0, payee: "Totally Unknown Vendor", amount: -20 },
+        { index: 1, payee: "Totally Unknown Client", amount: 500 }
+      ]
+    });
+
+    expect(result.results[0]).toEqual({ index: 0, accountIndex: 1, confidence: 0.8 }); // expense fallback
+    expect(result.results[1]).toEqual({ index: 1, accountIndex: 2, confidence: 0.8 }); // income fallback
+  });
+
+  test("returns null with no confidence when nothing matches at all", async () => {
+    const client = createFakeAnthropicClient();
+    const result = await client.categorizeTransactions({
+      apiKey: "unused",
+      model: "unused",
+      accounts: [{ index: 0, name: "Cash", category: "BANK" }],
+      transactions: [{ index: 0, payee: "Mystery Payee", amount: -5 }]
+    });
+
+    expect(result.results).toEqual([{ index: 0, accountIndex: null, confidence: null }]);
+  });
+});

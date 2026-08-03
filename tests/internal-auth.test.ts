@@ -26,6 +26,9 @@ const stubServices: ServiceContainer = {
   payeeRulesService: {
     suggestNormalization: async () => ({ results: [], usage: { actions: 0, inputTokens: 0, outputTokens: 0 }, keySource: null }),
     learnRules: async () => ({ learned: 0 })
+  },
+  categorizationService: {
+    suggestCategorization: async () => ({ results: [], usage: { actions: 0, inputTokens: 0, outputTokens: 0 }, keySource: null })
   }
 };
 

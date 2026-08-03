@@ -1,5 +1,5 @@
 import type { AnthropicClient } from "@/application/contracts";
-import type { ColumnMappingResult, PayeeNormalizationClientResult } from "@/domain/models";
+import type { CategorizationClientResult, ColumnMappingResult, PayeeNormalizationClientResult } from "@/domain/models";
 
 const FIELD_KEYWORDS: Record<string, string[]> = {
   transactionDate: ["date"],
@@ -55,6 +55,30 @@ export function createFakeAnthropicClient(): AnthropicClient {
       return {
         results: payees.map((payee) => ({ payee, canonicalPayee: fakeCanonicalize(payee) })),
         usage: { inputTokens: 40 + payees.length * 10, outputTokens: 10 + payees.length * 5 }
+      };
+    },
+
+    async categorizeTransactions({ accounts, transactions }): Promise<CategorizationClientResult> {
+      const results = transactions.map((t) => {
+        const lowerPayee = t.payee.toLowerCase();
+        // 1. keyword match, either direction -- deliberately loose since
+        // this only needs to exercise the pipeline in tests, not be a good
+        // classifier.
+        let match = accounts.find(
+          (a) => lowerPayee.includes(a.name.toLowerCase()) || a.name.toLowerCase().includes(lowerPayee)
+        );
+        // 2. fall back on the amount-sign hint from the plan: positive ->
+        // an INCOME-ish account, negative -> an EXPENSE-ish one.
+        if (!match) {
+          const wantsIncome = t.amount > 0;
+          match = accounts.find((a) => a.category.toUpperCase().includes(wantsIncome ? "INCOME" : "EXPENSE"));
+        }
+        return { index: t.index, accountIndex: match ? match.index : null, confidence: match ? 0.8 : null };
+      });
+
+      return {
+        results,
+        usage: { inputTokens: 200 + transactions.length * 15, outputTokens: 10 + transactions.length * 5 }
       };
     }
   };
