@@ -31,13 +31,18 @@ export function createPostgresUsageRepository(sql: SQL): UsageRepository {
     async summarizeCurrentPeriod(tenantId: string): Promise<UsagePeriodSummary> {
       const periodStart = startOfCurrentUtcMonth();
 
+      // Pass an ISO string, not the raw Date -- without prepared statements
+      // (disabled for Supabase's Transaction pooler, see client.ts), Bun's
+      // SQL client serializes a bare Date via Date.prototype.toString()
+      // ("Sat Aug 01 2026 00:00:00 GMT+0000 (...)"), which Postgres can't
+      // parse as a timestamptz.
       const rows = await sql`
         select
           key_source,
           sum(actions)::bigint as total_actions,
           sum(input_tokens + output_tokens + cache_read_tokens + cache_creation_tokens)::bigint as total_tokens
         from ai_usage
-        where tenant_id = ${tenantId} and created_at >= ${periodStart}
+        where tenant_id = ${tenantId} and created_at >= ${periodStart.toISOString()}
         group by key_source
       `;
 
