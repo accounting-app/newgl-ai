@@ -3,8 +3,8 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'newgl-ai'
-primary_region = 'dfw'
+app = 'newgl-ai-hgz7ra'
+primary_region = 'iad'
 
 [build]
 [http_service]
