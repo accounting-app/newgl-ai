@@ -102,6 +102,7 @@ export interface ColumnMappingService {
     limits?: PlanLimits;
   }): Promise<{
     mapping: import("@/domain/models").ColumnMapping;
+    layout: import("@/domain/models").ColumnLayout;
     usage: { actions: number; inputTokens: number; outputTokens: number };
     keySource: KeySource;
   }>;

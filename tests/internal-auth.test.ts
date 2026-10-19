@@ -21,7 +21,8 @@ const stubServices: ServiceContainer = {
     assertWithinQuota: async () => {}
   },
   columnMappingService: {
-    suggestMapping: async () => ({ mapping: {}, usage: { actions: 0, inputTokens: 0, outputTokens: 0 }, keySource: "platform" })
+    suggestMapping: async () => ({ mapping: {},
+      layout: { hasHeaderRow: null, amountColumnsMode: null, dateFormat: null, debitColumn: null, creditColumn: null }, usage: { actions: 0, inputTokens: 0, outputTokens: 0 }, keySource: "platform" })
   },
   payeeRulesService: {
     suggestNormalization: async () => ({ results: [], usage: { actions: 0, inputTokens: 0, outputTokens: 0 }, keySource: null }),
