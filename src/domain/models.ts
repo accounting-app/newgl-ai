@@ -60,6 +60,28 @@ export type ColumnMappingTargetField = (typeof COLUMN_MAPPING_TARGET_FIELDS)[num
 // ("the AI suggests; a human confirms").
 export type ColumnMapping = Partial<Record<ColumnMappingTargetField, number | null>>;
 
+export const DATE_FORMATS = ["yyyy-MM-dd", "MM/dd/yyyy", "dd/MM/yyyy", "MM-dd-yyyy", "dd-MM-yyyy"] as const;
+export type DateFormat = (typeof DATE_FORMATS)[number];
+
+// How the file as a whole is laid out, as opposed to which column is which
+// field. Every property is null when the model isn't confident -- the caller
+// keeps whatever the user already picked in that case.
+export type ColumnLayout = {
+  hasHeaderRow: boolean | null;
+  amountColumnsMode: "SINGLE" | "DEBIT_CREDIT" | null;
+  dateFormat: DateFormat | null;
+  debitColumn: number | null;
+  creditColumn: number | null;
+};
+
+export const EMPTY_COLUMN_LAYOUT: ColumnLayout = {
+  hasHeaderRow: null,
+  amountColumnsMode: null,
+  dateFormat: null,
+  debitColumn: null,
+  creditColumn: null
+};
+
 export type ColumnMappingUsage = { inputTokens: number; outputTokens: number };
 
 // Raw, unvalidated shape as returned by the AnthropicClient port -- may
@@ -67,6 +89,7 @@ export type ColumnMappingUsage = { inputTokens: number; outputTokens: number };
 // validates this down to a ColumnMapping before it's trusted anywhere else.
 export type ColumnMappingResult = {
   mapping: Record<string, number | null>;
+  layout?: Record<string, unknown>;
   usage: ColumnMappingUsage;
 };
 

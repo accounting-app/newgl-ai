@@ -5,7 +5,7 @@ const FIELD_KEYWORDS: Record<string, string[]> = {
   transactionDate: ["date"],
   payee: ["payee", "description", "merchant", "name"],
   memo: ["memo", "note", "notes"],
-  amount: ["amount", "debit", "credit"],
+  amount: ["amount"],
   referenceNumber: ["ref", "reference", "check", "id"]
 };
 
@@ -48,7 +48,25 @@ export function createFakeAnthropicClient(): AnthropicClient {
         mapping[field] = index === -1 ? null : index;
       }
 
-      return { mapping, usage: { inputTokens: 120, outputTokens: 24 } };
+      const findColumn = (keywords: string[]) => {
+        const index = lowerHeader.findIndex((column) => keywords.some((keyword) => column.includes(keyword)));
+        return index === -1 ? null : index;
+      };
+      const debitColumn = findColumn(["debit", "withdrawal"]);
+      const creditColumn = findColumn(["credit", "deposit"]);
+      const split = debitColumn !== null && creditColumn !== null;
+
+      return {
+        mapping,
+        layout: {
+          hasHeaderRow: true,
+          amountColumnsMode: split ? "DEBIT_CREDIT" : "SINGLE",
+          dateFormat: null,
+          debitColumn: split ? debitColumn : null,
+          creditColumn: split ? creditColumn : null
+        },
+        usage: { inputTokens: 120, outputTokens: 24 }
+      };
     },
 
     async normalizePayees({ payees }): Promise<PayeeNormalizationClientResult> {

@@ -4,8 +4,28 @@ import type {
   CredentialsService,
   UsageService
 } from "@/application/contracts";
-import type { ColumnMapping, PlanLimits } from "@/domain/models";
+import { DATE_FORMATS, EMPTY_COLUMN_LAYOUT } from "@/domain/models";
+import type { ColumnLayout, ColumnMapping, PlanLimits } from "@/domain/models";
 import { ValidationError } from "@/shared/errors";
+
+function validIndex(value: unknown, columnCount: number): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value < columnCount ? value : null;
+}
+
+// Same posture as the column indices: nothing the model says is trusted until
+// it matches a closed set (or is an in-range integer); anything else is null.
+function validateLayout(raw: Record<string, unknown> | undefined, columnCount: number): ColumnLayout {
+  if (!raw || typeof raw !== "object") return { ...EMPTY_COLUMN_LAYOUT };
+  const mode = raw.amountColumnsMode === "SINGLE" || raw.amountColumnsMode === "DEBIT_CREDIT" ? raw.amountColumnsMode : null;
+  const dateFormat = DATE_FORMATS.find((format) => format === raw.dateFormat) ?? null;
+  return {
+    hasHeaderRow: typeof raw.hasHeaderRow === "boolean" ? raw.hasHeaderRow : null,
+    amountColumnsMode: mode,
+    dateFormat,
+    debitColumn: validIndex(raw.debitColumn, columnCount),
+    creditColumn: validIndex(raw.creditColumn, columnCount)
+  };
+}
 
 export class ColumnMappingServiceImpl implements ColumnMappingService {
   constructor(
@@ -51,6 +71,8 @@ export class ColumnMappingServiceImpl implements ColumnMappingService {
           : null;
     }
 
+    const layout = validateLayout(result.layout, params.csvHeader.length);
+
     await this.usageService.recordUsage({
       tenantId: params.tenantId,
       feature: "column-mapping",
@@ -66,6 +88,7 @@ export class ColumnMappingServiceImpl implements ColumnMappingService {
 
     return {
       mapping,
+      layout,
       usage: { actions: 1, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens },
       keySource: resolved.source
     };
