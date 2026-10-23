@@ -90,7 +90,7 @@ describe("createFakeAnthropicClient (heuristic categorization)", () => {
       transactions: [{ index: 0, payee: "Coffee Shop", amount: -4.5 }]
     });
 
-    expect(result.results).toEqual([{ index: 0, accountIndex: 1, confidence: 0.8 }]);
+    expect(result.results).toMatchObject([{ index: 0, accountIndex: 1, confidence: 0.8 }]);
   });
 
   test("falls back to the amount-sign hint when no keyword matches", async () => {
@@ -105,8 +105,8 @@ describe("createFakeAnthropicClient (heuristic categorization)", () => {
       ]
     });
 
-    expect(result.results[0]).toEqual({ index: 0, accountIndex: 1, confidence: 0.8 }); // expense fallback
-    expect(result.results[1]).toEqual({ index: 1, accountIndex: 2, confidence: 0.8 }); // income fallback
+    expect(result.results[0]).toMatchObject({ index: 0, accountIndex: 1, confidence: 0.8 }); // expense fallback
+    expect(result.results[1]).toMatchObject({ index: 1, accountIndex: 2, confidence: 0.8 }); // income fallback
   });
 
   test("returns null with no confidence when nothing matches at all", async () => {
@@ -118,6 +118,6 @@ describe("createFakeAnthropicClient (heuristic categorization)", () => {
       transactions: [{ index: 0, payee: "Mystery Payee", amount: -5 }]
     });
 
-    expect(result.results).toEqual([{ index: 0, accountIndex: null, confidence: null }]);
+    expect(result.results).toEqual([{ index: 0, accountIndex: null, confidence: null, reason: null }]);
   });
 });

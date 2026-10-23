@@ -45,7 +45,8 @@ export class CategorizationServiceImpl implements CategorizationService {
           amount: t.amount,
           accountId: rule.accountId,
           confidence: 1,
-          resolvedBy: "rule"
+          resolvedBy: "rule",
+          reason: `This payee matches a rule learned from transactions you confirmed earlier ("${t.payee}").`
         };
       } else {
         unresolvedIndices.push(index);
@@ -105,7 +106,10 @@ export class CategorizationServiceImpl implements CategorizationService {
           amount: t.amount,
           accountId: validAccountIndex !== null ? accounts[validAccountIndex]!.id : null,
           confidence: validAccountIndex !== null ? confidence : null,
-          resolvedBy: "ai"
+          resolvedBy: "ai",
+          // Free text from the model: shown to the user as-is, so only a
+          // bounded plain string is kept.
+          reason: validAccountIndex !== null && typeof raw?.reason === "string" && raw.reason.trim() ? raw.reason.trim().slice(0, 400) : null
         };
       });
 

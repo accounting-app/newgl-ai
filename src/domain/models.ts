@@ -177,6 +177,8 @@ export type CategorizationSuggestion = {
   accountId: string | null;
   confidence: number | null;
   resolvedBy: "rule" | "ai";
+  /** One short sentence on why this account fits (the "Explain why" text); null when none is available. */
+  reason: string | null;
 };
 
 export type CategorizationUsage = { inputTokens: number; outputTokens: number };
@@ -187,7 +189,7 @@ export type CategorizationUsage = { inputTokens: number; outputTokens: number };
 // service re-maps this). `accountIndex` is a position in the compressed
 // account catalog sent alongside it.
 export type CategorizationClientResult = {
-  results: Array<{ index: number; accountIndex: number | null; confidence: number | null }>;
+  results: Array<{ index: number; accountIndex: number | null; confidence: number | null; reason?: string | null }>;
   usage: CategorizationUsage;
 };
 

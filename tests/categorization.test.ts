@@ -80,6 +80,8 @@ describe("categorization service + /internal/ai/categorize", () => {
     expect(result.results).toHaveLength(2);
     expect(result.results[0]).toMatchObject({ accountId: "acc-coffee", resolvedBy: "ai" });
     expect(result.results[1]).toMatchObject({ accountId: "acc-consulting-income", resolvedBy: "ai" });
+    // The model's one-line explanation rides along (the "Explain why" text).
+    expect(result.results[0]!.reason).toContain("Coffee Shop");
     expect(result.keySource).toBe("platform");
     // 2 rows sent to the model = 2 actions -- unlike column-mapping/payee
     // normalization, this is metered per row, not per batch (Part 5).
