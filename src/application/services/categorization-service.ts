@@ -5,9 +5,26 @@ import type {
   PayeeRulesRepository,
   UsageService
 } from "@/application/contracts";
-import type { CategorizationAccount, CategorizationSuggestion, CategorizationTransaction, KeySource, PlanLimits } from "@/domain/models";
+import type { CategorizationAccount, CategorizationSuggestion, PayeeSuggestion, CategorizationTransaction, KeySource, PlanLimits } from "@/domain/models";
 import { ValidationError } from "@/shared/errors";
 import { normalizePayeeKey } from "@/shared/payee-normalization";
+
+const DOMAIN_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
+
+// The model's merchant guess is free text from an untrusted source: keep only
+// bounded plain strings, and a website only when it is a bare domain (no
+// scheme, path or credentials) so the UI can safely build a link from it.
+function sanitizeMerchant(raw: unknown): PayeeSuggestion | null {
+  if (!raw || typeof raw !== "object") return null;
+  const { name, description, website } = raw as { name?: unknown; description?: unknown; website?: unknown };
+  if (typeof name !== "string" || !name.trim()) return null;
+  const domain = typeof website === "string" ? website.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/$/, "") : "";
+  return {
+    name: name.trim().slice(0, 80),
+    description: typeof description === "string" && description.trim() ? description.trim().slice(0, 300) : null,
+    website: DOMAIN_PATTERN.test(domain) ? domain.toLowerCase() : null
+  };
+}
 
 export class CategorizationServiceImpl implements CategorizationService {
   constructor(
@@ -46,7 +63,8 @@ export class CategorizationServiceImpl implements CategorizationService {
           accountId: rule.accountId,
           confidence: 1,
           resolvedBy: "rule",
-          reason: `This payee matches a rule learned from transactions you confirmed earlier ("${t.payee}").`
+          reason: `This payee matches a rule learned from transactions you confirmed earlier ("${t.payee}").`,
+          payeeSuggestion: null
         };
       } else {
         unresolvedIndices.push(index);
@@ -109,7 +127,8 @@ export class CategorizationServiceImpl implements CategorizationService {
           resolvedBy: "ai",
           // Free text from the model: shown to the user as-is, so only a
           // bounded plain string is kept.
-          reason: validAccountIndex !== null && typeof raw?.reason === "string" && raw.reason.trim() ? raw.reason.trim().slice(0, 400) : null
+          reason: validAccountIndex !== null && typeof raw?.reason === "string" && raw.reason.trim() ? raw.reason.trim().slice(0, 400) : null,
+          payeeSuggestion: sanitizeMerchant(raw?.merchant)
         };
       });
 

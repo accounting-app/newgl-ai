@@ -179,7 +179,11 @@ export type CategorizationSuggestion = {
   resolvedBy: "rule" | "ai";
   /** One short sentence on why this account fits (the "Explain why" text); null when none is available. */
   reason: string | null;
+  /** The real-world business the model thinks is behind this transaction (QBO's "New vendor for you"); null when it isn't confident. */
+  payeeSuggestion: PayeeSuggestion | null;
 };
+
+export type PayeeSuggestion = { name: string; description: string | null; website: string | null };
 
 export type CategorizationUsage = { inputTokens: number; outputTokens: number };
 
@@ -189,7 +193,7 @@ export type CategorizationUsage = { inputTokens: number; outputTokens: number };
 // service re-maps this). `accountIndex` is a position in the compressed
 // account catalog sent alongside it.
 export type CategorizationClientResult = {
-  results: Array<{ index: number; accountIndex: number | null; confidence: number | null; reason?: string | null }>;
+  results: Array<{ index: number; accountIndex: number | null; confidence: number | null; reason?: string | null; merchant?: { name?: unknown; description?: unknown; website?: unknown } | null }>;
   usage: CategorizationUsage;
 };
 

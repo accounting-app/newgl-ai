@@ -118,6 +118,6 @@ describe("createFakeAnthropicClient (heuristic categorization)", () => {
       transactions: [{ index: 0, payee: "Mystery Payee", amount: -5 }]
     });
 
-    expect(result.results).toEqual([{ index: 0, accountIndex: null, confidence: null, reason: null }]);
+    expect(result.results).toEqual([{ index: 0, accountIndex: null, confidence: null, reason: null, merchant: null }]);
   });
 });

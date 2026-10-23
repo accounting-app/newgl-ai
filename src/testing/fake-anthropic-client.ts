@@ -95,7 +95,10 @@ export function createFakeAnthropicClient(): AnthropicClient {
           index: t.index,
           accountIndex: match ? match.index : null,
           confidence: match ? 0.8 : null,
-          reason: match ? `The transaction "${t.payee}" fits the "${match.name}" account.` : null
+          reason: match ? `The transaction "${t.payee}" fits the "${match.name}" account.` : null,
+          merchant: /office depot|printer paper/i.test(t.payee)
+            ? { name: "Office Depot", description: "Retailer of office supplies.", website: "officedepot.com" }
+            : null
         };
       });
 
