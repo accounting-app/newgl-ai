@@ -124,8 +124,17 @@ function buildCategorizationTransactionsText(
   return `<transactions>\n${lines.join("\n")}\n</transactions>`;
 }
 
+// The prompt asks for bare JSON, but models sometimes wrap it anyway (a
+// ```json fence, or a sentence before/after). Take the outermost array
+// instead of failing the whole batch on formatting.
+export function extractJsonArray(text: string): string {
+  const start = text.indexOf("[");
+  const end = text.lastIndexOf("]");
+  return start !== -1 && end > start ? text.slice(start, end + 1) : text;
+}
+
 function parseCategorizationResponse(text: string): Array<{ index: number; accountIndex: number | null; confidence: number | null; reason?: string | null }> {
-  const parsed = JSON.parse(text);
+  const parsed = JSON.parse(extractJsonArray(text));
   if (!Array.isArray(parsed)) {
     throw new Error("Anthropic response was not a JSON array");
   }
