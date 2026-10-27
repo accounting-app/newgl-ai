@@ -80,6 +80,8 @@ describe("categorization service + /internal/ai/categorize", () => {
     expect(result.results).toHaveLength(2);
     expect(result.results[0]).toMatchObject({ accountId: "acc-coffee", resolvedBy: "ai" });
     expect(result.results[1]).toMatchObject({ accountId: "acc-consulting-income", resolvedBy: "ai" });
+    // The model's one-line explanation rides along (the "Explain why" text).
+    expect(result.results[0]!.reason).toContain("Coffee Shop");
     expect(result.keySource).toBe("platform");
     // 2 rows sent to the model = 2 actions -- unlike column-mapping/payee
     // normalization, this is metered per row, not per batch (Part 5).
@@ -218,6 +220,51 @@ describe("categorization service + /internal/ai/categorize", () => {
 
     expect(result.results.map((r) => r.accountId)).toEqual([null, null, null, null]);
     expect(result.results[3]!.confidence).toBeNull(); // malformed confidence discarded too
+  });
+
+  test("keeps a well-formed merchant guess and sanitizes a hostile one", async () => {
+    if (!reachable) return;
+    const tenantId = await newTenant("categorize-merchant");
+    const merchantClient = {
+      suggestColumnMapping: async () => ({ mapping: {}, usage: { inputTokens: 0, outputTokens: 0 } }),
+      normalizePayees: async () => ({ results: [], usage: { inputTokens: 0, outputTokens: 0 } }),
+      categorizeTransactions: async () => ({
+        results: [
+          { index: 0, accountIndex: 0, confidence: 0.9, merchant: { name: " Office Depot ", description: "Office supplies retailer.", website: "https://www.OfficeDepot.com/" } },
+          { index: 1, accountIndex: 0, confidence: 0.9, merchant: { name: "Evil", description: 5, website: "javascript:alert(1)" } },
+          { index: 2, accountIndex: 0, confidence: 0.9, merchant: { name: "" } },
+          { index: 3, accountIndex: 0, confidence: 0.9 }
+        ],
+        usage: { inputTokens: 10, outputTokens: 5 }
+      })
+    };
+    const services3 = createServiceContainer({
+      credentialsRepository: createPostgresCredentialsRepository(getSql()),
+      usageRepository: createPostgresUsageRepository(getSql()),
+      payeeRulesRepository: createPostgresPayeeRulesRepository(getSql()),
+      keyValidator: createFakeKeyValidator(),
+      anthropicClient: merchantClient,
+      encryptionKey: "Eo0pUoxiqHb5h1QlSUcD07lVfiqi3kOcovq2CaSmLew=",
+      platformApiKey: "sk-ant-platform-key-for-tests",
+      platformModel: "claude-opus-4-8"
+    });
+
+    const result = await services3.categorizationService.suggestCategorization({
+      tenantId,
+      accounts: ACCOUNTS,
+      transactions: [
+        { payee: "A", amount: -1 },
+        { payee: "B", amount: -1 },
+        { payee: "C", amount: -1 },
+        { payee: "D", amount: -1 }
+      ],
+      limits: { monthlyAiActions: 200, monthlyTokenCap: 500_000 }
+    });
+
+    expect(result.results[0]!.payeeSuggestion).toEqual({ name: "Office Depot", description: "Office supplies retailer.", website: "officedepot.com" });
+    expect(result.results[1]!.payeeSuggestion).toEqual({ name: "Evil", description: null, website: null }); // non-domain website dropped
+    expect(result.results[2]!.payeeSuggestion).toBeNull(); // empty name
+    expect(result.results[3]!.payeeSuggestion).toBeNull(); // no merchant at all
   });
 
   test("throws AiQuotaExceededError for a platform-key tenant already at the limit, without touching the rules table", async () => {

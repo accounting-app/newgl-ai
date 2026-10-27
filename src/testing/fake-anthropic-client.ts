@@ -91,7 +91,15 @@ export function createFakeAnthropicClient(): AnthropicClient {
           const wantsIncome = t.amount > 0;
           match = accounts.find((a) => a.category.toUpperCase().includes(wantsIncome ? "INCOME" : "EXPENSE"));
         }
-        return { index: t.index, accountIndex: match ? match.index : null, confidence: match ? 0.8 : null };
+        return {
+          index: t.index,
+          accountIndex: match ? match.index : null,
+          confidence: match ? 0.8 : null,
+          reason: match ? `The transaction "${t.payee}" fits the "${match.name}" account.` : null,
+          merchant: /office depot|printer paper/i.test(t.payee)
+            ? { name: "Office Depot", description: "Retailer of office supplies.", website: "officedepot.com" }
+            : null
+        };
       });
 
       return {
